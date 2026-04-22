@@ -1,0 +1,22 @@
+{
+  "name": "aliste-sdk",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Aliste Technologies SDK monorepo",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "clean": "npm run clean --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alistetechnologies/aliste-sdk.git"
+  }
+}
