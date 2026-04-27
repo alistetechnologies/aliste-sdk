@@ -1,3 +1,5 @@
+import type { Request, Response } from 'express';
+
 export interface ServiceIdentifiers {
   serviceName: string;
   serviceVersion: string;
@@ -23,12 +25,22 @@ export interface MetricsConfig {
   serviceVersion?: string;
   deploymentEnvironment?: string;
   instanceId?: string;
-  /** Path to expose Prometheus metrics. Default: /metrics */
+  /** Path to expose Prometheus metrics. Must start with "/". Default: /metrics */
   metricsPath?: string;
   /** Enable prom-client default process/Node.js metrics. Default: true */
   collectDefaultMetrics?: boolean;
-  /** Interval in ms for default metrics collection. Default: 5000 */
-  defaultMetricsInterval?: number;
+  /**
+   * Precision in ms for the prom-client event-loop monitor.
+   * Lower values increase accuracy at a slight CPU cost. Default: 10.
+   * Note: prom-client collects metrics on-demand — this is NOT a polling interval.
+   */
+  eventLoopMonitoringPrecision?: number;
+  /**
+   * Optional guard called before serving the metrics endpoint.
+   * Return `true` to allow the request; return `false` to deny it
+   * (the SDK responds with 401 Unauthorized automatically).
+   */
+  authHandler?: (req: Request, res: Response) => boolean | Promise<boolean>;
 }
 
 export interface ResolvedTracingConfig {
@@ -48,5 +60,6 @@ export interface ResolvedMetricsConfig {
   instanceId: string;
   metricsPath: string;
   collectDefaultMetrics: boolean;
-  defaultMetricsInterval: number;
+  eventLoopMonitoringPrecision: number;
+  authHandler?: (req: Request, res: Response) => boolean | Promise<boolean>;
 }

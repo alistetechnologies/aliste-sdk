@@ -1,1 +1,1 @@
-export { initTracing } from './tracer';
+export { initTracing, shutdown } from './tracer';

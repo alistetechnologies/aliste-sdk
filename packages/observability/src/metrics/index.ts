@@ -10,12 +10,19 @@ export function initMetrics(app: Express, config?: MetricsConfig): void {
 
   app.use(metricsMiddleware());
 
-  app.get(resolved.metricsPath, async (_req: Request, res: Response) => {
+  app.get(resolved.metricsPath, async (req: Request, res: Response) => {
     try {
+      if (resolved.authHandler) {
+        const allowed = await resolved.authHandler(req, res);
+        if (!allowed) {
+          res.status(401).end('Unauthorized');
+          return;
+        }
+      }
       res.set('Content-Type', registry.contentType);
       res.end(await registry.metrics());
-    } catch (err) {
-      res.status(500).end(String(err));
+    } catch {
+      res.status(500).end('Internal server error');
     }
   });
 }

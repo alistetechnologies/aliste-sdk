@@ -33,7 +33,7 @@ export function createCollectors(config: ResolvedMetricsConfig): MetricCollector
   if (config.collectDefaultMetrics) {
     promCollectDefaultMetrics({
       register: registry,
-      eventLoopMonitoringPrecision: config.defaultMetricsInterval,
+      eventLoopMonitoringPrecision: config.eventLoopMonitoringPrecision,
     });
   }
 

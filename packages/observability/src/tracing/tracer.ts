@@ -61,12 +61,20 @@ export function initTracing(config?: TracingConfig): void {
   });
 
   sdk.start();
+}
 
-  process.on('SIGTERM', () => {
-    sdk!
-      .shutdown()
-      .then(() => console.log('[observability] OTel SDK shut down cleanly'))
-      .catch((err: Error) => console.error('[observability] Error shutting down OTel SDK', err))
-      .finally(() => process.exit(0));
-  });
+/**
+ * Gracefully shuts down the OTel SDK, flushing any in-flight spans.
+ * Call this in your application's shutdown handler before exiting:
+ *
+ *   process.on('SIGTERM', async () => {
+ *     await shutdown();
+ *     process.exit(0);
+ *   });
+ */
+export async function shutdown(): Promise<void> {
+  if (sdk === null) return;
+  const instance = sdk;
+  sdk = null;
+  await instance.shutdown();
 }
