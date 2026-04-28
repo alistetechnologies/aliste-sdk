@@ -111,7 +111,6 @@ All packages in this repository follow the same conventions:
 
 **Sensible, safe defaults.** Every configuration value has a default that is safe and useful in development. Production values are driven by environment variables. Services need zero configuration to get started and can override progressively.
 
-**No `.env` loading.** SDK packages never call `dotenv.config()` or equivalent. The host application owns environment setup.
 
 ---
 

@@ -12,10 +12,13 @@ Production-grade observability for Node.js + Express services. Drop in OpenTelem
 
 The SDK compiles to CommonJS and works directly with `require()`. In CJS there is no import hoisting, so `require()` calls execute in the exact order they appear — no dynamic import trick needed.
 
+The two calls have different homes:
+- `initTracing()` — in the **entry point** (`server.js` / `bin/www`), before any other `require()`
+- `initMetrics(app)` — inside **`app.js`**, before route definitions
+
 ```js
 // server.js — process entry point
-
-const { initTracing, initMetrics } = require("@aliste-sdk/observability");
+const { initTracing } = require("@aliste-sdk/observability");
 
 initTracing({
   serviceName: process.env.OTEL_SERVICE_NAME,
@@ -25,17 +28,31 @@ initTracing({
   samplerRatio: Number(process.env.OTEL_TRACES_SAMPLER_ARG ?? "1.0"),
 });
 
-// All subsequent requires are now patched by OTel (express, http, mongoose, etc.)
+// express, http, mongoose, etc. all load here — after OTel patches are applied
 const app = require("./app");
 const http = require("http");
 
+http.createServer(app).listen(Number(process.env.PORT ?? 3000));
+```
+
+```js
+// app.js
+const express = require("express");
+const { initMetrics } = require("@aliste-sdk/observability");
+
+const app = express();
+
+// Must come before any route definitions
 initMetrics(app, {
   serviceName: process.env.OTEL_SERVICE_NAME,
   serviceVersion: process.env.SERVICE_VERSION,
   deploymentEnvironment: process.env.NODE_ENV,
 });
 
-http.createServer(app).listen(Number(process.env.PORT ?? 3000));
+app.get("/users/:id", (req, res) => { ... });
+// ... rest of routes
+
+module.exports = app;
 ```
 
 ### ESM / TypeScript (`import`)
@@ -157,10 +174,14 @@ The only hard rule is: **`initTracing()` must run before any `require()` or `imp
 
 ### CommonJS — straightforward
 
-`require()` is synchronous and sequential. Call `initTracing()` first, then require everything else. No dynamic import needed.
+`require()` is synchronous and sequential — no hoisting, no dynamic import tricks needed.
+
+**`initTracing()`** goes in the entry point (`server.js` / `bin/www`), as the very first statement before any other `require()`.
+
+**`initMetrics(app)`** goes inside `app.js`, before route definitions. This is the critical constraint: Express processes middleware in the order it was registered. If `initMetrics` is called after routes are defined — even by just a few lines — the metrics middleware ends up behind route handlers in the stack. Route handlers send responses without calling `next()`, so the middleware never runs and no metrics are recorded.
 
 ```js
-// server.js
+// server.js — only initTracing here
 const { initTracing } = require('@aliste-sdk/observability');
 
 initTracing({
@@ -170,11 +191,23 @@ initTracing({
   samplerRatio: 0.1,
 });
 
-// Safe — express is loaded after OTel patches are applied
-const app = require('./app');
+const app = require('./app'); // express loads here, after OTel patches
 const http = require('http');
-
 http.createServer(app).listen(3000);
+```
+
+```js
+// app.js — initMetrics before routes
+const express = require('express');
+const { initMetrics } = require('@aliste-sdk/observability');
+
+const app = express();
+
+initMetrics(app, { serviceName: 'my-service' }); // ← must be before routes
+
+app.get('/users/:id', (req, res) => { ... });    // ← routes after
+// ...
+module.exports = app;
 ```
 
 ### ESM / TypeScript — requires a dynamic import
@@ -204,11 +237,19 @@ initTracing(); // too late
 ```
 
 ```js
-// WRONG (CJS) — require order is reversed
-const app = require('./app'); // express loaded here
+// WRONG (CJS) — initTracing called after app loads
+const app = require('./app'); // express already loaded here
 
 const { initTracing } = require('@aliste-sdk/observability');
 initTracing(); // too late: patches never applied
+```
+
+```js
+// WRONG (CJS) — initMetrics called after routes are defined
+const app = require('./app'); // all routes already registered inside app.js
+
+const { initMetrics } = require('@aliste-sdk/observability');
+initMetrics(app); // middleware is behind routes in the stack — never fires
 ```
 
 When tracing is initialized too late, `NodeSDK.start()` still runs without error, but the auto-instrumentation hooks were never registered, so no spans are generated for HTTP requests.
