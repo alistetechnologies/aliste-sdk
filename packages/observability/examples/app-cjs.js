@@ -1,10 +1,19 @@
 const express = require("express");
+const { initMetrics } = require("@aliste-sdk/observability");
 
 const app = express();
 app.use(express.json());
 
-// initMetrics is called in server.js, before this module is used to create
-// an HTTP server. Route definitions here are all covered by the middleware.
+// initMetrics must be called before any route definitions so that
+// metricsMiddleware sits at the top of the Express stack and intercepts
+// every request before route handlers fire.
+initMetrics(app, {
+  serviceName: process.env.OTEL_SERVICE_NAME,
+  serviceVersion: process.env.SERVICE_VERSION,
+  deploymentEnvironment: process.env.SERVICE_DEPLOYMENT_ENVIRONMENT ?? process.env.NODE_ENV,
+  metricsPath: "/metrics",
+  collectDefaultMetrics: true,
+});
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
