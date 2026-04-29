@@ -10,7 +10,7 @@ Packages are published to the public npm registry under the `@aliste-sdk` scope.
 
 | Package | Version | Description |
 |---|---|---|
-| [`@aliste-sdk/observability`](packages/observability/) | `1.0.0` | OpenTelemetry tracing + Prometheus metrics for Express services |
+| [`@aliste-sdk/observability`](packages/observability/) | `1.1.0` | OpenTelemetry tracing + Prometheus metrics for Express services |
 
 
 ---
