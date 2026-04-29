@@ -146,7 +146,7 @@ app.listen()
 - **OpenTelemetry tracing** via `NodeSDK` with `getNodeAutoInstrumentations`
 - **Prometheus metrics** via `prom-client` using an **isolated custom `Registry`** (never the global singleton)
 - **Express middleware** that tracks request duration, active requests, response size, and errors
-- **Route normalization** that strips UUIDs, MongoDB ObjectIds, and numeric IDs from label values before they reach Prometheus
+- **Route normalization** that strips numeric IDs, UUIDs, phone numbers, and alphanumeric device IDs from label values before they reach Prometheus
 - **Double-initialization safety** — both `initTracing` and `createCollectors` are idempotent
 - **Environment-driven configuration** with optional programmatic overrides
 - **Graceful shutdown** on `SIGTERM` via `sdk.shutdown()`
@@ -278,6 +278,10 @@ initMetrics(app, {
   metricsPath: '/metrics',         // default
   collectDefaultMetrics: true,     // default — enables Node.js process metrics
   defaultMetricsInterval: 5000,    // default — ms between GC/event loop samples
+  // Restrict /metrics to your Prometheus server's IP or internal subnet.
+  // Falls back to METRICS_ALLOWED_IPS env var (comma-separated).
+  // may leave empty only in development
+  allowedIPs: ['10.0.0.0/8', '192.168.1.50'],
 });
 
 // Route definitions go AFTER initMetrics so they are covered by the middleware.
@@ -328,6 +332,7 @@ The SDK reads directly from `process.env`. It does **not** load or parse `.env` 
 | `NODE_ENV` | tracing, metrics | `development` | Deployment environment (`production`, `staging`, `development`) |
 | `INSTANCE_ID` | tracing, metrics | `${HOSTNAME}-${PID}` | Unique instance identifier. Auto-generated from `HOSTNAME` and `process.pid` if not set. |
 | `HOSTNAME` | tracing, metrics | `local` | Used as part of the auto-generated instance ID when `INSTANCE_ID` is not set |
+| `METRICS_ALLOWED_IPS` | metrics | *(none — open)* | Comma-separated list of IPs or CIDR ranges allowed to scrape `/metrics`. Example: `"10.0.0.1,10.0.0.0/8"`. Takes effect only when `allowedIPs` is not set in the config object. If empty, a warning is logged. |
 
 ### Variables honored by the underlying OTel SDK (not this SDK's config resolver)
 
@@ -385,15 +390,19 @@ Prometheus stores one time series per unique label combination. If a label like 
 
 ### How `normalizeRoute` works
 
-The utility in [src/utils/route.ts](src/utils/route.ts) applies three regex substitutions in order, then strips the query string:
+The utility in [src/utils/route.ts](src/utils/route.ts) applies a single general-purpose regex to every path segment, then strips the query string:
 
-| Pattern | Matches | Replaced with |
-|---|---|---|
-| `UUID_RE` | `/550e8400-e29b-41d4-a716-446655440000` | `/:id` |
-| `OBJECT_ID_RE` | `/507f1f77bcf86cd799439011` (24 hex chars) | `/:id` |
-| `NUMERIC_RE` | `/123`, `/42` (all-digit path segments) | `/:id` |
+```
+/(?:\d+|\+\d{7,}|[a-zA-Z0-9+.\-]*\d{4,}[a-zA-Z0-9]*)(?=\/|$)/g
+```
 
-Query strings are stripped before any substitution.
+A segment is replaced with `:id` when it is:
+
+- **All digits** — `123`, `42`
+- **E.164 phone number** — `+919106521492` (leading `+` followed by 7+ digits)
+- **Alphanumeric with 4+ consecutive digits** — `H322556`, `DEV0042`, `550e8400-e29b-41d4-a716-446655440000`
+
+The 4-digit threshold preserves short version-style segments like `v3`, `v12`, or `house2` (fewer than 4 consecutive digits). Query strings are stripped before the regex runs.
 
 ### Examples
 
@@ -403,6 +412,8 @@ Query strings are stripped before any substitution.
 | `/users/123?expand=profile` | `/users/:id` |
 | `/users/507f1f77bcf86cd799439011` | `/users/:id` |
 | `/users/550e8400-e29b-41d4-a716-446655440000` | `/users/:id` |
+| `/devices/H322556` | `/devices/:id` |
+| `/sms/+919106521492` | `/sms/:id` |
 | `/api/v1/orders` | `/api/v1/orders` |
 | `/health` | `/health` |
 
@@ -450,13 +461,32 @@ Both guards use module-level singleton variables. This matters because:
 
 The `/metrics` endpoint exposes internal runtime data: memory usage, GC pause durations, event loop lag, request rates, error rates, and response times. This information is valuable to an attacker for understanding service behavior and load patterns.
 
-**The SDK does not add any authentication to `/metrics`.**
+**The SDK includes a built-in IP allowlist for `/metrics`.**
 
-In production, restrict access using one or more of:
+Configure it via the `allowedIPs` option or the `METRICS_ALLOWED_IPS` environment variable:
+
+```ts
+initMetrics(app, {
+  allowedIPs: ['10.0.0.0/8', '192.168.1.50'],  // exact IPs or CIDR ranges
+});
+```
+
+```bash
+METRICS_ALLOWED_IPS="10.0.0.0/8,192.168.1.50" node server.js
+```
+
+When `allowedIPs` is non-empty, any request to `/metrics` from an IP not in the list receives `HTTP 403 Forbidden`. Both exact IPv4 addresses and CIDR ranges are supported. IPv6-mapped IPv4 addresses (e.g. `::ffff:10.0.0.1`) are normalized before comparison.
+
+If `allowedIPs` is empty, the SDK logs a warning at startup:
+
+```
+[observability] /metrics is open to all IPs. Set METRICS_ALLOWED_IPS to restrict access.
+```
+
+For defense in depth, combine the IP allowlist with:
 
 - **Network policy / firewall** — Allow scrape traffic only from your Prometheus server's IP range.
-- **Reverse proxy rule** — In Nginx or your ingress controller, block `/metrics` from public-facing traffic and allow only internal subnets.
-- **Express middleware** — Add an IP allowlist or token-check middleware mounted specifically on the metrics path before calling `initMetrics()`, or mount your own handler on the same path after switching to a custom `metricsPath`.
+- **Reverse proxy rule** — In Nginx or your ingress controller, block `/metrics` from public-facing traffic.
 
 Never expose `/metrics` directly on a public-facing port.
 
@@ -470,8 +500,8 @@ The [examples/](examples/) directory contains working examples for both module s
 
 | File | Purpose |
 |---|---|
-| [examples/server.js](examples/server.js) | Entry point — calls `initTracing()`, then `require('./app-cjs')`, then `initMetrics(app)` |
-| [examples/app-cjs.js](examples/app-cjs.js) | Express app with sample routes |
+| [examples/server.js](examples/server.js) | Entry point — calls `initTracing()`, then `require('./app-cjs')` |
+| [examples/app-cjs.js](examples/app-cjs.js) | Express app — calls `initMetrics(app)` before route definitions |
 
 ### TypeScript / ESM
 
@@ -519,6 +549,30 @@ All examples define the same routes, which exercise the route normalizer:
 **How to confirm:** Run `npm ls @aliste-sdk/observability` in the consuming project. If you see more than one version or path, there are duplicate instances.
 
 **Fix:** Ensure the package is deduplicated. In a monorepo, hoist the package to the root `node_modules`.
+
+---
+
+### `/metrics` returns HTTP 403
+
+**Cause:** The scraping client's IP is not in the `allowedIPs` list (or `METRICS_ALLOWED_IPS` env var).
+
+**How to confirm:** Check the IP of your Prometheus server or the machine making the scrape request. Compare it against the configured allowlist.
+
+**Fix:** Add the scraper's IP or its subnet to `allowedIPs`:
+
+```ts
+initMetrics(app, {
+  allowedIPs: ['10.0.0.0/8', '192.168.1.50'],
+});
+```
+
+Or via the environment variable:
+
+```bash
+METRICS_ALLOWED_IPS="10.0.0.0/8,192.168.1.50"
+```
+
+To allow all IPs temporarily during development, set `allowedIPs: []` (or leave `METRICS_ALLOWED_IPS` unset). A warning will be logged.
 
 ---
 

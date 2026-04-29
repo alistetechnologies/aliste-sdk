@@ -25,6 +25,17 @@ export function resolveTracingConfig(config?: TracingConfig): ResolvedTracingCon
   };
 }
 
+function resolveAllowedIPs(override?: string[] | string): string[] {
+  if (override !== undefined) {
+    if (Array.isArray(override)) return override;
+    if (typeof override === 'string') return override.split(',').map((s) => s.trim()).filter(Boolean);
+    return [];
+  }
+  const env = process.env.METRICS_ALLOWED_IPS;
+  if (!env) return [];
+  return env.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 export function resolveMetricsConfig(config?: MetricsConfig): ResolvedMetricsConfig {
   return {
     serviceName: config?.serviceName ?? process.env.OTEL_SERVICE_NAME ?? 'unknown-service',
@@ -34,5 +45,6 @@ export function resolveMetricsConfig(config?: MetricsConfig): ResolvedMetricsCon
     metricsPath: config?.metricsPath ?? '/metrics',
     collectDefaultMetrics: config?.collectDefaultMetrics ?? true,
     defaultMetricsInterval: config?.defaultMetricsInterval ?? 5000,
+    allowedIPs: resolveAllowedIPs(config?.allowedIPs),
   };
 }

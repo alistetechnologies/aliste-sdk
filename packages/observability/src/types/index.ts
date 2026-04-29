@@ -29,6 +29,13 @@ export interface MetricsConfig {
   collectDefaultMetrics?: boolean;
   /** Interval in ms for default metrics collection. Default: 5000 */
   defaultMetricsInterval?: number;
+  /**
+   * IP allowlist for the /metrics endpoint. Accepts exact IPs and CIDR ranges.
+   * Falls back to METRICS_ALLOWED_IPS env var (comma-separated).
+   * If empty, the endpoint is open to all — not recommended for production.
+   * Example: ['10.0.0.0/8', '192.168.1.50']
+   */
+  allowedIPs?: string[] | string;
 }
 
 export interface ResolvedTracingConfig {
@@ -49,4 +56,5 @@ export interface ResolvedMetricsConfig {
   metricsPath: string;
   collectDefaultMetrics: boolean;
   defaultMetricsInterval: number;
+  allowedIPs: string[];
 }
