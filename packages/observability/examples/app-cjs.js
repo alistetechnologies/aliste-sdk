@@ -13,6 +13,10 @@ initMetrics(app, {
   deploymentEnvironment: process.env.SERVICE_DEPLOYMENT_ENVIRONMENT ?? process.env.NODE_ENV,
   metricsPath: "/metrics",
   collectDefaultMetrics: true,
+  // Restrict /metrics to your Prometheus server's IP or internal subnet.
+  // Falls back to METRICS_ALLOWED_IPS env var (comma-separated).
+  // Leave empty only in development — a warning is logged in production.
+  allowedIPs: process.env.METRICS_ALLOWED_IPS?.split(",").map((s) => s.trim()) ?? [],
 });
 
 app.get("/health", (_req, res) => {
