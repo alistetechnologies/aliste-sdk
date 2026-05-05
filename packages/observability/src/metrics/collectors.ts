@@ -14,6 +14,7 @@ export interface MetricCollectors {
   activeRequests: Gauge<string>;
   httpErrorCounter: Counter<string>;
   httpResponseSize: Histogram<string>;
+  httpRequestSize: Histogram<string>;
 }
 
 let collectors: MetricCollectors | null = null;
@@ -73,6 +74,14 @@ export function createCollectors(config: ResolvedMetricsConfig): MetricCollector
     registers: [registry],
   });
 
+  const httpRequestSize = new Histogram<string>({
+    name: 'http_request_size_bytes',
+    help: 'Size of HTTP request bodies in bytes',
+    labelNames: ['method', 'route'],
+    buckets: [512, 1024, 2048, 4096, 8192, 16384, 32768],
+    registers: [registry],
+  });
+
   collectors = {
     registry,
     httpRequestCounter,
@@ -80,6 +89,7 @@ export function createCollectors(config: ResolvedMetricsConfig): MetricCollector
     activeRequests,
     httpErrorCounter,
     httpResponseSize,
+    httpRequestSize,
   };
 
   return collectors;

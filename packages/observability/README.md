@@ -305,12 +305,18 @@ The SDK creates a fresh `prom-client` `Registry` instance rather than using `pro
 | `active_http_requests` | Gauge | — |
 | `http_errors_total` | Counter | `method`, `route`, `status_code` |
 | `http_response_size_bytes` | Histogram | `method`, `route`, `status_code` |
+| `http_request_size_bytes` | Histogram | `method`, `route` |
 
 Plus all standard Node.js process metrics from `collectDefaultMetrics` (heap, GC, event loop lag, file descriptors, etc.).
 
 ### Middleware behavior
 
 `metricsMiddleware()` uses `res.on('finish')` to record all metrics after the response is fully sent. The request duration timer starts on the incoming request, not on `finish`. Active request count is incremented on arrival and decremented on finish. Response size is read from the `content-length` response header.
+
+**Request size** (`http_request_size_bytes`) is measured as follows:
+1. If the `content-length` request header is present, its value is used directly.
+2. Otherwise, if a parsed `req.body` is available (e.g. via `express.json()`), the size is estimated as `Buffer.byteLength(JSON.stringify(req.body))`.
+3. If neither is available (e.g. GET requests with no body), `0` is observed.
 
 If `initMetrics()` has not been called before `metricsMiddleware()` runs, the middleware silently passes through — it will not throw.
 
