@@ -4,6 +4,7 @@ node_modules/
 
 # Build outputs
 dist/
+*.tgz
 
 # TypeScript diagnostics
 *.d.ts.map
