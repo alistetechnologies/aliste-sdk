@@ -26,9 +26,16 @@ export function metricsMiddleware(): RequestHandler {
           ? rawContentLength
           : 0;
 
+      const rawReqLength = req.headers['content-length'];
+      let requestSize = rawReqLength !== undefined ? parseInt(rawReqLength, 10) : NaN;
+      if (!Number.isFinite(requestSize) && req.body !== undefined) {
+        try { requestSize = Buffer.byteLength(JSON.stringify(req.body)); } catch { requestSize = 0; }
+      }
+
       c.httpRequestCounter.inc(labels);
       c.activeRequests.dec();
       c.httpResponseSize.observe(labels, Number.isFinite(contentLength) ? contentLength : 0);
+      c.httpRequestSize.observe({ method: req.method, route }, Number.isFinite(requestSize) ? requestSize : 0);
 
       if (res.statusCode >= 400) {
         c.httpErrorCounter.inc(labels);
