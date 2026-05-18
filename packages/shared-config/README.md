@@ -6,13 +6,13 @@ Shared ESLint, Prettier, and lint-staged configuration for Aliste Node.js servic
 
 ## What you get
 
-| Piece | Description |
-| ----- | ----------- |
-| ESLint flat config | Node.js rules for `**/*.{js,mjs,cjs}` (recommended + `eslint-plugin-n` + Prettier integration) |
-| Prettier config | Semi, single quotes, 100 print width, 4-space tabs |
-| lint-staged map | Format and lint staged JS files on commit |
-| `aliste-config` CLI | Runs each tool with bundled config paths — no root config files required for CI/scripts |
-| `aliste-config init` | Scaffolds scripts, optional stub configs, and a Husky pre-commit hook |
+| Piece                | Description                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| ESLint flat config   | Node.js rules for `**/*.{js,mjs,cjs}` (recommended + `eslint-plugin-n` + Prettier integration) |
+| Prettier config      | Semi, single quotes, 100 print width, 4-space tabs                                             |
+| lint-staged map      | Format and lint staged JS files on commit                                                      |
+| `aliste-config` CLI  | Runs each tool with bundled config paths — no root config files required for CI/scripts        |
+| `aliste-config init` | Scaffolds scripts, optional stub configs, and a Husky pre-commit hook                          |
 
 Bundled dependencies: `eslint`, `prettier`, `lint-staged`, and `husky`. Consumers install **one** dev dependency.
 
@@ -31,13 +31,13 @@ npm run lint
 
 ### Scripts added by `init`
 
-| Script | Command |
-| ------ | ------- |
-| `lint` | `aliste-config eslint .` |
-| `lint:fix` | `aliste-config eslint . --fix` |
-| `format` | `aliste-config prettier --write .` |
+| Script         | Command                            |
+| -------------- | ---------------------------------- |
+| `lint`         | `aliste-config eslint .`           |
+| `lint:fix`     | `aliste-config eslint . --fix`     |
+| `format`       | `aliste-config prettier --write .` |
 | `format:check` | `aliste-config prettier --check .` |
-| `prepare` | `husky` |
+| `prepare`      | `husky`                            |
 
 ---
 
@@ -78,10 +78,10 @@ aliste-config init [--force] [--skip-husky]
 aliste-config help
 ```
 
-| Flag | Effect |
-| ---- | ------ |
-| `--force` | Overwrite generated stub configs and pre-commit hook |
-| `--skip-husky` | Only add scripts and stub configs; no Git hook |
+| Flag           | Effect                                               |
+| -------------- | ---------------------------------------------------- |
+| `--force`      | Overwrite generated stub configs and pre-commit hook |
+| `--skip-husky` | Only add scripts and stub configs; no Git hook       |
 
 ---
 
