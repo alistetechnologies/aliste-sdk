@@ -1,16 +1,23 @@
 {
     "name": "@aliste-sdk/shared-config",
-    "version": "1.0.0",
+    "version": "1.1.0",
+    "description": "Shared ESLint, Prettier, and lint-staged config with a zero-setup CLI for Aliste Node.js repos",
     "main": "index.js",
     "license": "MIT",
+    "bin": {
+        "aliste-config": "./bin/aliste-config.js"
+    },
     "publishConfig": {
         "access": "public"
     },
     "files": [
+        "README.md",
         "index.js",
         "eslint.config.js",
         "prettier.config.js",
-        "lint-staged.config.js"
+        "lint-staged.config.js",
+        "bin",
+        "lib"
     ],
     "repository": {
         "type": "git",
@@ -25,20 +32,16 @@
     },
     "dependencies": {
         "@eslint/js": "^10.0.1",
+        "eslint": "^9.28.0",
         "eslint-config-prettier": "^10.1.5",
         "eslint-plugin-n": "^18.0.1",
         "eslint-plugin-prettier": "^5.4.0",
         "globals": "^17.6.0",
+        "husky": "^9.1.7",
+        "lint-staged": "^17.0.4",
         "prettier": "^3.5.3"
     },
-    "peerDependencies": {
-        "eslint": ">=9.0.0"
-    },
     "scripts": {
-        "lint": "eslint"
-    },
-    "devDependencies": {
-        "husky": "^9.1.7",
-        "lint-staged": "^17.0.4"
+        "lint": "node bin/aliste-config.js eslint ."
     }
 }
