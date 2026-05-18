@@ -89,9 +89,9 @@ Or use a relative `file:` path in the consuming project's `package.json` during 
 
 ```json
 {
-    "dependencies": {
-        "@aliste-sdk/observability": "file:../aliste-sdk/packages/observability"
-    }
+  "dependencies": {
+    "@aliste-sdk/observability": "file:../aliste-sdk/packages/observability"
+  }
 }
 ```
 
