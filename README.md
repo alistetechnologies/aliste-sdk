@@ -8,10 +8,10 @@ Packages are published to the public npm registry under the `@aliste-sdk` scope.
 
 ## Available Packages
 
-| Package | Version | Description |
-|---|---|---|
-| [`@aliste-sdk/observability`](packages/observability/) | `1.1.0` | OpenTelemetry tracing + Prometheus metrics for Express services |
-
+| Package                                                | Version | Description                                                            |
+| ------------------------------------------------------ | ------- | ---------------------------------------------------------------------- |
+| [`@aliste-sdk/observability`](packages/observability/) | `1.2.1` | OpenTelemetry tracing + Prometheus metrics for Express services        |
+| [`@aliste-sdk/shared-config`](packages/shared-config/) | `1.1.0` | Shared ESLint / Prettier / lint-staged config with `aliste-config` CLI |
 
 ---
 
@@ -110,7 +110,6 @@ All packages in this repository follow the same conventions:
 **No global singletons from third-party libraries.** Where a library offers both a global singleton and a custom instance (e.g. `prom-client`'s global `register`), we always use the custom instance. This prevents cross-contamination between packages and makes test isolation straightforward.
 
 **Sensible, safe defaults.** Every configuration value has a default that is safe and useful in development. Production values are driven by environment variables. Services need zero configuration to get started and can override progressively.
-
 
 ---
 
